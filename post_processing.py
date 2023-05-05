@@ -9,11 +9,13 @@ def truncate(number, digits) -> float:
     stepper = 10.0 ** digits
     return math.trunc(stepper * number) / stepper
 """
+def angstroms(meters):
+    return meters*1E10
 #takes molecule sites positions and writes them to pdb
 
-def N2_to_pdb(mol, filename, mode = "w"):
+def N2_to_pdb(mol, filename):
     #open or create file
-    f = open(filename, mode)
+    f = open(filename, "a")
 
     for i in [0,1]:
 
@@ -30,9 +32,9 @@ def N2_to_pdb(mol, filename, mode = "w"):
         f.write(2*" ")
         f.write("S" + str(mol.sites[i].no))
         #truncate position decimal places
-        x = round(mol.sites[i].g_coord[0], 3)
-        y = round(mol.sites[i].g_coord[1], 3)
-        z = round(mol.sites[i].g_coord[2], 3)
+        x = round(angstroms(mol.sites[i].g_coord[0]), 3)
+        y = round(angstroms(mol.sites[i].g_coord[1]), 3)
+        z = round(angstroms(mol.sites[i].g_coord[2]), 3)
         #get the length of the coordinate number string
         x_len = len(str(x))
         y_len = len(str(y))
@@ -47,9 +49,14 @@ def N2_to_pdb(mol, filename, mode = "w"):
         #element symbol
         sym_len = 1
         f.write((78 - 54 - sym_len)*" ")
-        f.write('N')
+        f.write(mol.sites[i].label)
 
         f.write("\n")
 
+def molecules_to_pdb(molecules, filename):
+    for mol in molecules:
+        N2_to_pdb(mol, filename)
+
+    f = open(filename, "a")
     f.write("ENDMDL")
     f.write("\n")

@@ -5,10 +5,8 @@ import update_algorithm as updt
 import plot_dynamics as plt_dyn
 #define starting orientation with quaternion, and angular velocity
 #orientation = np.array()
-omega = np.array([0,0,0,np.pi/4])
 
 #VECTOR ARGUMENTS TO FUNCTIONS ARE NP ARRAYS!!
-
 def normalise(vector):
     return vector/np.linalg.norm(vector)
 
@@ -61,6 +59,13 @@ def rotation_matrix(angle, axis):
     #have to transpose
     return np.transpose(np.array([row_1, row_2, row_3]))
 
+def global_to_local(q):
+    row_1 = [q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2, 2*(q[1]*q[2] + q[0]*q[3]), 2*(q[1]*q[3] - q[0]*q[2])]
+    row_2 = [2*(q[1]*q[2] - q[0]*q[3]), q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2, 2*(q[2]*q[3] + q[0]*q[1])]
+    row_3 = [2*(q[1]*q[3] + q[0]*q[2]), 2*(q[2]*q[3] - q[0]*q[1]), q[0]**2 - q[1]**2 - q[2]**2 + q[3]**2]
+    #have to transpose
+    return np.array([row_1, row_2, row_3])
+
 def rotation_matrix_2(q):
     row_1 = [q[0]**2 + q[1]**2 - q[2]**2 - q[3]**2, 2*(q[1]*q[2] + q[0]*q[3]), 2*(q[1]*q[3] - q[0]*q[2])]
     row_2 = [2*(q[1]*q[2] - q[0]*q[3]), q[0]**2 - q[1]**2 + q[2]**2 - q[3]**2, 2*(q[2]*q[3] + q[0]*q[1])]
@@ -72,13 +77,16 @@ def rotation_matrix_2(q):
 #interaction site
 class interaction_site:
 
-    def __init__(self, l_coord = np.array([0, 0, 0]), g_coord = np.array([0, 0, 0]), force = np.array([0, 0, 0]), mass = 1, no = 0, label = ""):
+    def __init__(self, l_coord = np.array([0, 0, 0]), g_coord = np.array([0, 0, 0]), force = np.array([0, 0, 0]), mass = 14.0067*1.66054E-27, no = 0, label = ""):
         self.l_coord = l_coord
         self.g_coord = g_coord
         self.force = force
         self.mass = mass
         self.no = no
         self.label = label
+
+    def reset_force(self):
+        self.force = np.array([0, 0, 0])
 
     def print(self):
         print("SITE " + str(self.no) + ":" + "\n")
@@ -92,13 +100,14 @@ class interaction_site:
 class linear_molecule:
     #label & local coordinates
     label = "L2"
-    l_1 = np.array([-0.5, 0, 0])
-    l_2 = np.array([0.5, 0, 0])
+    l_1 = np.array([-0.55E-10, 0, 0])
+    l_2 = np.array([0.55E-10, 0, 0])
     #interaction sites
-    def __init__(self, CoM = np.array([0, 0, 0]), orientation = np.array([0, 0, 1, 0]), omega = np.array([0, 0, 0, 0]), no = 0):
+    def __init__(self, CoM = np.array([0, 0, 0]), velocity = np.array([0, 0, 0]), orientation = np.array([0, 0, 1, 0]), omega = np.array([0, 0, 0, 0]), no = 0):
         #molecule parameters
         self.no = no
-        self.position= CoM
+        self.position = CoM
+        self.velocity = velocity
         self.q = orientation
         self.rot = rotation_matrix_2(self.q)
         #define interaction sites & initialise
@@ -109,13 +118,18 @@ class linear_molecule:
 
         #inertial parameters
         self.mass = self.sites[0].mass + self.sites[1].mass
-        self.m_inertia = np.array([1, 0.001, 1, 1]) #includes ficticious intertia
+        self.m_inertia = np.array([2*self.sites[0].mass*(self.l_1[0]**2), 0.001*2*self.sites[0].mass*(self.l_1[0]**2), 2*self.sites[0].mass*(self.l_1[0]**2), 2*self.sites[0].mass*(self.l_1[0]**2)]) #includes ficticious intertia
         self.force = self.sites[0].force + self.sites[1].force
+        self.force_n = np.array([0, 0, 0])
         self.torque = np.array([0, 0, 0, 0])
         self.q_torque = np.array([0, 0, 0, 0])
 
         #quaternion momenta
         self.p = quaternion_momenta(self.m_inertia, omega, self.q)
+
+    def site_global_coordinates(self):
+        self.sites[0].g_coord = self.position + self.rot @ self.sites[0].l_coord
+        self.sites[1].g_coord = self.position + self.rot @ self.sites[1].l_coord
 
     def set_orientation(self, q):
         self.q = q
@@ -123,6 +137,12 @@ class linear_molecule:
         #sites
         self.sites[0].g_coord = self.position + self.rot @ self.sites[0].l_coord
         self.sites[1].g_coord = self.position + self.rot @ self.sites[1].l_coord
+
+    def set_CoM_force(self):
+        self.force = self.sites[0].force + self.sites[1].force
+
+    def set_CoM_force_n(self):
+        self.force_n = self.sites[0].force + self.sites[1].force
 
     def set_torque(self, torque):
         self.torque = torque
@@ -163,6 +183,10 @@ class linear_molecule:
         x[1] = updt.propagator_p(self.p, self.q_torque, dt) #use new torque
         self.p = x[1]
 
+    def update_linear_dynamics(self,dt):
+        #
+        return 0
+
     def calculate_omega(self):
         #s matrix
         q = self.q
@@ -201,20 +225,49 @@ class linear_molecule:
 
 
 #test code
-mol_1 = linear_molecule(CoM = np.array([0, 0, 0]), orientation = np.array([1, 0, 0, 0]), omega = np.array([0, 0, 0, 6]), no = 0)
-mol_1.set_torque(np.array([0, 0, 0, 0.01]))
+"""
+omega_z = 358E12
+mol_1 = linear_molecule(CoM = np.array([0, 0, 0]), orientation = np.array([1, 0, 0, 0]), omega = np.array([0, 0, 0, omega_z]), no = 0)
+#mol_1.set_torque(np.array([0, 0, 0, 0.01]))
+molecules = [mol_1]
 
+#delete old data
+f = open("data.pdb", "w")
+f.close()
 
 axis = [0, 0, 1]
-post.N2_to_pdb(mol_1, "data.pdb")
+post.molecules_to_pdb(molecules, "data.pdb")
 
 omega_z = []
 z = []
 
 for i in range(1,10000):
-    mol_1.update_angular_dynamics(0.01)
-    post.N2_to_pdb(mol_1, "data.pdb", "a")
+    mol_1.update_angular_dynamics(1E-15)
+    post.molecules_to_pdb(molecules, "data.pdb")
     omega_z.append(math.degrees(mol_1.calculate_omega()[3]))
 
 
 plt_dyn.plot_omega(omega_z, 0.5)
+
+"""
+omega_z = 358E12
+orientation_1 = np.array([math.cos(math.pi/4), 0, 0, math.sin(math.pi/4)])
+mol_1 = linear_molecule(CoM = np.array([-5E-10, -0.65E-10, 0]), velocity = np.array([4000, 0, 0]), orientation = np.array([1, 0, 0, 0]), omega = np.array([0, 0, 0, 358E12]), no = 0)
+mol_2 = linear_molecule(CoM = np.array([5E-10, 0, 0]), velocity = np.array([-4000, 0, 0]), orientation = np.array([1, 0, 0, 0]), omega = np.array([0, 0, 0, -358E12]), no = 1)
+
+
+molecules = [mol_1, mol_2]
+
+
+#delete old data
+f = open("data.pdb", "w")
+f.close()
+
+#simulate 200 timesteps
+dt = 1E-15
+
+for i in range(0,1000):
+    updt.integrate_linear_dynamics(molecules, dt)
+    updt.update_angular_dynamics(molecules, dt)
+
+    post.molecules_to_pdb(molecules, "data.pdb")

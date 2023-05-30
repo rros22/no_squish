@@ -45,12 +45,12 @@ class box:
 f = open("data.pdb", "w")
 f.close()
 
-domain = box(np.array([1E-9, 1E-9, 1E-9]), 27)
+domain = box(np.array([1E-9, 1E-9, 1E-9]), 8)
 post.molecules_to_pdb(domain.molecules, "data.pdb")
 
 dt = 1E-15
 
-for i in range(0,1000):
+for i in range(0,10000):
     updt.integrate_linear_dynamics(domain.molecules, dt)
     updt.update_angular_dynamics(domain.molecules, dt)
 

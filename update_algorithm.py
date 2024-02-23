@@ -27,8 +27,8 @@ def lennard_jones_force(site_1, site_2, epsilon, sigma):
 
 def wall_force(site, side_length, epsilon, sigma):
     #define wall_limits
-    x_min = -0.1*side_length
-    x_max = 1.1*side_length
+    x_min = -0.1*side_length*2
+    x_max = 1.1*side_length*2
 
     y_min = -0.1*side_length
     y_max = 1.1*side_length
@@ -66,8 +66,8 @@ def set_forces_sites(molecules):
             lennard_jones_force(molecules[i].sites[1], molecules[j].sites[1], epsilon, sigma)
 
         #test
-        wall_force(molecules[i].sites[0], 2E-9, epsilon, sigma)
-        wall_force(molecules[i].sites[1], 2E-9, epsilon, sigma)
+        wall_force(molecules[i].sites[0], 4E-9, epsilon, sigma)
+        wall_force(molecules[i].sites[1], 4E-9, epsilon, sigma)
 
 def set_CoM_force(molecules):
     for mol in molecules:

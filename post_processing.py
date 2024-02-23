@@ -60,3 +60,17 @@ def molecules_to_pdb(molecules, filename):
     f = open(filename, "a")
     f.write("ENDMDL")
     f.write("\n")
+"""
+def n2_to_csv(mol, filename):
+    f = open(filename, "a")
+
+    for i in [0,1]:
+        f.write("Atom_" str(i))
+
+        x = mol.sites[i].g_coord[0]
+        y = mol.sites[i].g_coord[1])
+        z = mol.sites[i].g_coord[2])
+
+        f.write(",")
+        f.write(str(x) + ',' + str(y) + ',' + str(z) + ',')
+"""
